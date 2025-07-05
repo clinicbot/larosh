@@ -3,6 +3,7 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מדריך בחירת תכשירים - לה רוש-פוזה</title>
     <style>
         body {
@@ -82,8 +83,8 @@ function renderParameterCheckboxes(params) {
     const container = document.getElementById('parameterCheckboxes');
     container.innerHTML = "";
     params.forEach(param => {
+        const wrapper = document.createElement('div'); // עוטף כל שורה
         const label = document.createElement('label');
-        label.style.marginLeft = '15px';
 
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
@@ -91,9 +92,12 @@ function renderParameterCheckboxes(params) {
 
         label.appendChild(checkbox);
         label.append(" " + param);
-        container.appendChild(label);
+        wrapper.appendChild(label);
+        container.appendChild(wrapper);
     });
 }
+
+
 
 document.getElementById('categorySelect').addEventListener('change', function () {
     const selectedCategory = this.value;
