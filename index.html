@@ -3,7 +3,7 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מדריך בחירת תכשירים - לה רוש-פוזה</title>
     <style>
         body {
@@ -12,43 +12,93 @@
             margin: 40px;
             font-size: 23px;
         }
+
         select, label, input[type="checkbox"] {
             font-size: 23px;
         }
+
         button {
             font-size: 23px;
             padding: 20px 20px;
         }
+
         .product {
             border: 1px solid #ccc;
             padding: 20px;
             margin-bottom: 20px;
             font-size: 23px;
         }
+
         .hidden {
             display: none;
+        }
+
+        /* Loading screen styles */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background-color: white;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 25px;
+        }
+
+        .spinner {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #007bff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-weight: bold;
+            color: #007bff;
         }
     </style>
 </head>
 <body>
-<h2><strong>מדריך בחירת תכשירים - לה רוש-פוזה</strong></h2>
 
-<div>
-    <label for="categorySelect">בחר קטגוריה:</label>
-    <select id="categorySelect">
-        <option value="">-- בחר --</option>
-    </select>
+<!-- 🔄 Loading screen -->
+<div id="loading-screen">
+    <div class="spinner"></div>
+    <div class="loading-text">טוען נתונים...</div>
 </div>
 
-<div>
-    <h3>בחר תכונות נוספות:</h3>
-    <div id="parameterCheckboxes"></div>
+<!-- 🌐 תוכן האתר ייחשף רק לאחר טעינת הנתונים -->
+<div id="main-content" style="display: none;">
+    <h2><strong>מדריך בחירת תכשירים - לה רוש-פוזה</strong></h2>
+
+    <div>
+        <label for="categorySelect">בחר קטגוריה:</label>
+        <select id="categorySelect">
+            <option value="">-- בחר --</option>
+        </select>
+    </div>
+
+    <div>
+        <h3>בחר תכונות נוספות:</h3>
+        <div id="parameterCheckboxes"></div>
+    </div>
+
+    <button onclick="filterProducts()">הצג תכשירים מתאימים</button>
+
+    <h3>תכשירים מתאימים:</h3>
+    <div id="results"></div>
 </div>
-
-<button onclick="filterProducts()">הצג תכשירים מתאימים</button>
-
-<h3>תכשירים מתאימים:</h3>
-<div id="results"></div>
 
 <script>
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbxkvI7DKod8GAMR8TUATPFPV5XTYsu2EMvVXsebBz-iq5IycDpSV4QNIGUH7Ppklj93/exec";
@@ -74,8 +124,12 @@ async function loadData() {
 
         allParameters = Object.keys(products[0]).filter(key => !["קטגוריה", "שם המוצר", "תיאור"].includes(key));
         renderParameterCheckboxes(allParameters);
+
+        // ✅ אחרי שהכל נטען – הסתר את מסך הטעינה, והצג את הדף
+        document.getElementById("loading-screen").style.display = "none";
+        document.getElementById("main-content").style.display = "block";
     } catch (err) {
-        document.getElementById("results").innerText = "שגיאה בטעינת נתונים: " + err;
+        document.getElementById("loading-screen").innerText = "שגיאה בטעינת נתונים: " + err;
     }
 }
 
@@ -83,7 +137,7 @@ function renderParameterCheckboxes(params) {
     const container = document.getElementById('parameterCheckboxes');
     container.innerHTML = "";
     params.forEach(param => {
-        const wrapper = document.createElement('div'); // עוטף כל שורה
+        const wrapper = document.createElement('div'); // כל פרמטר בשורה נפרדת
         const label = document.createElement('label');
 
         const checkbox = document.createElement('input');
@@ -97,11 +151,9 @@ function renderParameterCheckboxes(params) {
     });
 }
 
-
-
 document.getElementById('categorySelect').addEventListener('change', function () {
     const selectedCategory = this.value;
-	document.getElementById('results').innerHTML = "";
+    document.getElementById('results').innerHTML = "";
 
     if (!selectedCategory) {
         renderParameterCheckboxes(allParameters);
