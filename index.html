@@ -2,8 +2,8 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>מדריך בחירת תכשירים - לה רוש-פוזה</title>
   <style>
     body {
@@ -12,33 +12,37 @@
       margin: 40px;
       font-size: 23px;
     }
-    select, label, input[type="checkbox"] {
+
+    select, label, input[type="checkbox"], button {
       font-size: 23px;
     }
+
     button {
-      font-size: 23px;
       padding: 20px 20px;
     }
+
     .product {
       border: 1px solid #ccc;
       padding: 20px;
       margin-bottom: 20px;
       font-size: 23px;
     }
+
     .hidden {
       display: none;
     }
 
-    /* Loading screen styles */
+    /* מסך טעינה */
     #loading-screen {
       position: fixed;
       top: 0;
       right: 0;
       bottom: 0;
       left: 0;
+      width: 100vw;
       height: 100vh;
       background-color: white;
-      z-index: 9999;
+      z-index: 999999;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -49,8 +53,8 @@
       border: 6px solid #f3f3f3;
       border-top: 6px solid #007bff;
       border-radius: 50%;
-      width: 50px;
-      height: 50px;
+      width: 60px;
+      height: 60px;
       animation: spin 1s linear infinite;
       margin-bottom: 15px;
     }
@@ -63,129 +67,128 @@
     .loading-text {
       font-weight: bold;
       color: #007bff;
-      font-size: 20px;
+      font-size: 22px;
       text-align: center;
       padding: 0 10px;
     }
   </style>
 </head>
 <body>
-  <!-- Loading screen -->
-  <div id="loading-screen">
-    <div class="spinner"></div>
-    <div class="loading-text">טוען נתונים...</div>
-  </div>
 
-  <h2><strong>מדריך בחירת תכשירים - לה רוש-פוזה</strong></h2>
+<!-- מסך טעינה -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div class="loading-text">טוען נתונים...</div>
+</div>
 
-  <div>
-    <label for="categorySelect">בחר קטגוריה:</label>
-    <select id="categorySelect">
-      <option value="">-- בחר --</option>
-    </select>
-  </div>
+<h2><strong>מדריך בחירת תכשירים - לה רוש-פוזה</strong></h2>
 
-  <div>
-    <h3>בחר תכונות נוספות:</h3>
-    <div id="parameterCheckboxes"></div>
-  </div>
+<div>
+  <label for="categorySelect">בחר קטגוריה:</label>
+  <select id="categorySelect">
+    <option value="">-- בחר --</option>
+  </select>
+</div>
 
-  <button onclick="filterProducts()">הצג תכשירים מתאימים</button>
+<div>
+  <h3>בחר תכונות נוספות:</h3>
+  <div id="parameterCheckboxes"></div>
+</div>
 
-  <h3>תכשירים מתאימים:</h3>
-  <div id="results"></div>
+<button onclick="filterProducts()">הצג תכשירים מתאימים</button>
 
-  <script>
-    const SHEET_URL = "https://script.google.com/macros/s/AKfycbxkvI7DKod8GAMR8TUATPFPV5XTYsu2EMvVXsebBz-iq5IycDpSV4QNIGUH7Ppklj93/exec";
+<h3>תכשירים מתאימים:</h3>
+<div id="results"></div>
 
-    let products = [];
-    let allParameters = [];
+<script>
+  const SHEET_URL = "https://script.google.com/macros/s/AKfycbxkvI7DKod8GAMR8TUATPFPV5XTYsu2EMvVXsebBz-iq5IycDpSV4QNIGUH7Ppklj93/exec";
+  let products = [];
+  let allParameters = [];
 
-    async function loadData() {
-      try {
-        const res = await fetch(SHEET_URL);
-        const data = await res.json();
-        products = data;
+  async function loadData() {
+    try {
+      const res = await fetch(SHEET_URL);
+      const data = await res.json();
+      products = data;
 
-        const categorySelect = document.getElementById('categorySelect');
-        const categories = [...new Set(products.map(p => p["קטגוריה"]))];
-        categories.forEach(cat => {
-          const option = document.createElement('option');
-          option.value = cat;
-          option.textContent = cat;
-          categorySelect.appendChild(option);
-        });
+      const categorySelect = document.getElementById('categorySelect');
+      const categories = [...new Set(products.map(p => p["קטגוריה"]))];
 
-        allParameters = Object.keys(products[0]).filter(key => !["קטגוריה", "שם המוצר", "תיאור"].includes(key));
-        renderParameterCheckboxes(allParameters);
-
-        // Hide loading screen
-        document.getElementById('loading-screen').style.display = 'none';
-
-      } catch (err) {
-        document.getElementById("results").innerText = "שגיאה בטעינת נתונים: " + err;
-        document.getElementById('loading-screen').style.display = 'none';
-      }
-    }
-
-    function renderParameterCheckboxes(params) {
-      const container = document.getElementById('parameterCheckboxes');
-      container.innerHTML = "";
-      params.forEach(param => {
-        const wrapper = document.createElement('div');
-        const label = document.createElement('label');
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = param;
-
-        label.appendChild(checkbox);
-        label.append(" " + param);
-        wrapper.appendChild(label);
-        container.appendChild(wrapper);
+      categories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        categorySelect.appendChild(option);
       });
+
+      allParameters = Object.keys(products[0]).filter(key => !["קטגוריה", "שם המוצר", "תיאור"].includes(key));
+      renderParameterCheckboxes(allParameters);
+
+      document.getElementById('loading-screen').style.display = 'none'; // הסתרת מסך טעינה
+    } catch (err) {
+      document.getElementById("results").innerText = "שגיאה בטעינת נתונים: " + err;
+    }
+  }
+
+  function renderParameterCheckboxes(params) {
+    const container = document.getElementById('parameterCheckboxes');
+    container.innerHTML = "";
+    params.forEach(param => {
+      const wrapper = document.createElement('div');
+      const label = document.createElement('label');
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = param;
+
+      label.appendChild(checkbox);
+      label.append(" " + param);
+      wrapper.appendChild(label);
+      container.appendChild(wrapper);
+    });
+  }
+
+  document.getElementById('categorySelect').addEventListener('change', function () {
+    const selectedCategory = this.value;
+    document.getElementById('results').innerHTML = "";
+
+    if (!selectedCategory) {
+      renderParameterCheckboxes(allParameters);
+      return;
     }
 
-    document.getElementById('categorySelect').addEventListener('change', function () {
-      const selectedCategory = this.value;
-      document.getElementById('results').innerHTML = "";
+    const filteredProducts = products.filter(p => p["קטגוריה"] === selectedCategory);
+    const relevantParams = allParameters.filter(param => filteredProducts.some(p => p[param] === "x"));
+    renderParameterCheckboxes(relevantParams);
+  });
 
-      if (!selectedCategory) {
-        renderParameterCheckboxes(allParameters);
-        return;
-      }
+  function filterProducts() {
+    const selectedCategory = document.getElementById('categorySelect').value;
+    const selectedParams = Array.from(document.querySelectorAll('#parameterCheckboxes input:checked')).map(cb => cb.value);
 
-      const filteredProducts = products.filter(p => p["קטגוריה"] === selectedCategory);
-      const relevantParams = allParameters.filter(param => filteredProducts.some(p => p[param] === "x"));
-      renderParameterCheckboxes(relevantParams);
+    const filtered = products.filter(p => {
+      if (selectedCategory && p["קטגוריה"] !== selectedCategory) return false;
+      return selectedParams.every(param => p[param] === "x");
     });
 
-    function filterProducts() {
-      const selectedCategory = document.getElementById('categorySelect').value;
-      const selectedParams = Array.from(document.querySelectorAll('#parameterCheckboxes input:checked')).map(cb => cb.value);
+    const resultsDiv = document.getElementById('results');
+    resultsDiv.innerHTML = "";
 
-      const filtered = products.filter(p => {
-        if (selectedCategory && p["קטגוריה"] !== selectedCategory) return false;
-        return selectedParams.every(param => p[param] === "x");
-      });
-
-      const resultsDiv = document.getElementById('results');
-      resultsDiv.innerHTML = "";
-
-      if (filtered.length === 0) {
-        resultsDiv.textContent = "לא נמצאו תכשירים מתאימים.";
-        return;
-      }
-
-      filtered.forEach(p => {
-        const div = document.createElement('div');
-        div.className = "product";
-        div.innerHTML = `<strong>${p["שם המוצר"]}</strong><br>${p["תיאור"]}`;
-        resultsDiv.appendChild(div);
-      });
+    if (filtered.length === 0) {
+      resultsDiv.textContent = "לא נמצאו תכשירים מתאימים.";
+      return;
     }
 
-    window.onload = loadData;
-  </script>
+    filtered.forEach(p => {
+      const div = document.createElement('div');
+      div.className = "product";
+      div.innerHTML = `<strong>${p["שם המוצר"]}</strong><br>${p["תיאור"]}`;
+      resultsDiv.appendChild(div);
+    });
+  }
+
+  window.onload = loadData;
+</script>
+
 </body>
 </html>
