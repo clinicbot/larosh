@@ -2,123 +2,155 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>מדריך בחירת תכשירים - לה רוש-פוזה</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       direction: rtl;
-      margin: 40px;
-      font-size: 23px;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom, #dbeeff, #f4f8fb);
+      background-attachment: fixed;
+      color: #333;
+      font-size: 20px;
     }
 
-    select, label, input[type="checkbox"], button {
-      font-size: 23px;
+    h2 {
+      text-align: center;
+      padding: 30px 20px 10px;
+      color: #1a3d6d;
+      font-size: 28px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background-color: #ffffffcc; /* לבן שקוף מעט */
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 30px;
+      border-radius: 12px;
+      margin-top: 20px;
+      margin-bottom: 40px;
+    }
+
+    label, h3 {
+      display: block;
+      margin-top: 20px;
+      font-weight: bold;
+      color: #1a3d6d;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px;
+      font-size: 20px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-top: 5px;
+    }
+
+    .checkbox-container div {
+      margin: 10px 0;
+    }
+
+    .checkbox-container label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+    }
+
+    input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
     }
 
     button {
-      padding: 20px 20px;
+      width: 100%;
+      background-color: #1a73e8;
+      color: white;
+      padding: 15px;
+      border: none;
+      border-radius: 8px;
+      font-size: 20px;
+      margin-top: 30px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0c53b0;
     }
 
     .product {
-      border: 1px solid #ccc;
+      border: 1px solid #ddd;
+      background-color: #f9f9f9;
       padding: 20px;
-      margin-bottom: 20px;
-      font-size: 23px;
+      margin: 15px 0;
+      border-radius: 8px;
     }
 
-    .hidden {
-      display: none;
-    }
-
-    /* מסך טעינה */
-    #loading-screen {
+    .spinner-overlay {
       position: fixed;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-color: white;
-      z-index: 999999;
+      top: 0; right: 0; bottom: 0; left: 0;
+      background-color: #ffffff;
       display: flex;
-      flex-direction: column;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
+      z-index: 9999;
     }
 
     .spinner {
-      border: 6px solid #f3f3f3;
-      border-top: 6px solid #007bff;
+      border: 6px solid #eee;
+      border-top: 6px solid #1a73e8;
       border-radius: 50%;
-      width: 60px;
-      height: 60px;
+      width: 50px;
+      height: 50px;
       animation: spin 1s linear infinite;
-      margin-bottom: 15px;
     }
 
     @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+      0% { transform: rotate(0deg);}
+      100% { transform: rotate(360deg);}
     }
 
-    .loading-text {
-      font-weight: bold;
-      color: #007bff;
-      font-size: 22px;
-      text-align: center;
-      padding: 0 10px;
+    @media (max-width: 600px) {
+      body { font-size: 18px; }
+      h2 { font-size: 24px; }
+      button { font-size: 18px; }
     }
   </style>
 </head>
 <body>
 
-<!-- מסך טעינה -->
-<div id="loading-screen">
+<div class="spinner-overlay" id="spinner">
   <div class="spinner"></div>
-  <div class="loading-text">טוען נתונים...</div>
 </div>
 
-<h2><strong>מדריך בחירת תכשירים - לה רוש-פוזה</strong></h2>
-
-<div>
+<h2>מדריך בחירת תכשירים - לה רוש-פוזה</h2>
+<div class="container">
   <label for="categorySelect">בחר קטגוריה:</label>
   <select id="categorySelect">
     <option value="">-- בחר --</option>
   </select>
-</div>
 
-<div>
   <h3>בחר תכונות נוספות:</h3>
-  <div id="parameterCheckboxes"></div>
+  <div id="parameterCheckboxes" class="checkbox-container"></div>
+
+  <button onclick="filterProducts()">הצג תכשירים מתאימים</button>
+
+  <h3>תכשירים מתאימים:</h3>
+  <div id="results"></div>
 </div>
-
-<button onclick="filterProducts()">הצג תכשירים מתאימים</button>
-
-<h3>תכשירים מתאימים:</h3>
-<div id="results"></div>
 
 <script>
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbxkvI7DKod8GAMR8TUATPFPV5XTYsu2EMvVXsebBz-iq5IycDpSV4QNIGUH7Ppklj93/exec";
-
 let products = [];
 let allParameters = [];
 
-function showLoading() {
-  const loading = document.getElementById('loading-screen');
-  if (loading) loading.style.display = 'flex';
-}
-
-function hideLoading() {
-  const loading = document.getElementById('loading-screen');
-  if (loading) loading.style.display = 'none';
-}
-
 async function loadData() {
-  showLoading();
-
   try {
     const res = await fetch(SHEET_URL);
     const data = await res.json();
@@ -126,7 +158,6 @@ async function loadData() {
 
     const categorySelect = document.getElementById('categorySelect');
     const categories = [...new Set(products.map(p => p["קטגוריה"]))];
-
     categories.forEach(cat => {
       const option = document.createElement('option');
       option.value = cat;
@@ -136,13 +167,10 @@ async function loadData() {
 
     allParameters = Object.keys(products[0]).filter(key => !["קטגוריה", "שם המוצר", "תיאור"].includes(key));
     renderParameterCheckboxes(allParameters);
+
+    document.getElementById('spinner').style.display = "none";
   } catch (err) {
     document.getElementById("results").innerText = "שגיאה בטעינת נתונים: " + err;
-  } finally {
-    // השהייה קלה כדי להבטיח שהמסך מוצג גם בנייד
-    setTimeout(() => {
-      hideLoading();
-    }, 500);
   }
 }
 
@@ -150,29 +178,25 @@ function renderParameterCheckboxes(params) {
   const container = document.getElementById('parameterCheckboxes');
   container.innerHTML = "";
   params.forEach(param => {
-    const wrapper = document.createElement('div');
+    const row = document.createElement('div');
     const label = document.createElement('label');
-
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.value = param;
-
     label.appendChild(checkbox);
     label.append(" " + param);
-    wrapper.appendChild(label);
-    container.appendChild(wrapper);
+    row.appendChild(label);
+    container.appendChild(row);
   });
 }
 
 document.getElementById('categorySelect').addEventListener('change', function () {
   const selectedCategory = this.value;
   document.getElementById('results').innerHTML = "";
-
   if (!selectedCategory) {
     renderParameterCheckboxes(allParameters);
     return;
   }
-
   const filteredProducts = products.filter(p => p["קטגוריה"] === selectedCategory);
   const relevantParams = allParameters.filter(param => filteredProducts.some(p => p[param] === "x"));
   renderParameterCheckboxes(relevantParams);
@@ -203,8 +227,7 @@ function filterProducts() {
   });
 }
 
-window.addEventListener("DOMContentLoaded", loadData);
+window.onload = loadData;
 </script>
-
 </body>
 </html>
