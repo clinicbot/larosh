@@ -27,7 +27,7 @@
     .container {
       max-width: 600px;
       margin: auto;
-      background-color: #ffffffcc; /* לבן שקוף מעט */
+      background-color: #ffffffcc;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       padding: 30px;
       border-radius: 12px;
@@ -166,8 +166,6 @@ async function loadData() {
     });
 
     allParameters = Object.keys(products[0]).filter(key => !["קטגוריה", "שם המוצר", "תיאור"].includes(key));
-    renderParameterCheckboxes(allParameters);
-
     document.getElementById('spinner').style.display = "none";
   } catch (err) {
     document.getElementById("results").innerText = "שגיאה בטעינת נתונים: " + err;
@@ -192,11 +190,15 @@ function renderParameterCheckboxes(params) {
 
 document.getElementById('categorySelect').addEventListener('change', function () {
   const selectedCategory = this.value;
-  document.getElementById('results').innerHTML = "";
+  const resultsDiv = document.getElementById('results');
+  const checkboxContainer = document.getElementById('parameterCheckboxes');
+  resultsDiv.innerHTML = "";
+
   if (!selectedCategory) {
-    renderParameterCheckboxes(allParameters);
+    checkboxContainer.innerHTML = "";
     return;
   }
+
   const filteredProducts = products.filter(p => p["קטגוריה"] === selectedCategory);
   const relevantParams = allParameters.filter(param => filteredProducts.some(p => p[param] === "x"));
   renderParameterCheckboxes(relevantParams);
@@ -204,15 +206,20 @@ document.getElementById('categorySelect').addEventListener('change', function ()
 
 function filterProducts() {
   const selectedCategory = document.getElementById('categorySelect').value;
+  const resultsDiv = document.getElementById('results');
+  resultsDiv.innerHTML = "";
+
+  if (!selectedCategory) {
+    resultsDiv.textContent = "יש לבחור קטגוריה לפני הצגת תכשירים.";
+    return;
+  }
+
   const selectedParams = Array.from(document.querySelectorAll('#parameterCheckboxes input:checked')).map(cb => cb.value);
 
   const filtered = products.filter(p => {
-    if (selectedCategory && p["קטגוריה"] !== selectedCategory) return false;
-    return selectedParams.every(param => p[param] === "x");
+    return p["קטגוריה"] === selectedCategory &&
+           selectedParams.every(param => p[param] === "x");
   });
-
-  const resultsDiv = document.getElementById('results');
-  resultsDiv.innerHTML = "";
 
   if (filtered.length === 0) {
     resultsDiv.textContent = "לא נמצאו תכשירים מתאימים.";
