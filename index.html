@@ -5,6 +5,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>מדריך בחירת תכשירים - לה רוש-פוזה</title>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-2Y56YMQ25W"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-2Y56YMQ25W');
+  </script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -136,6 +145,11 @@
     <option value="">-- בחר --</option>
   </select>
 
+  <label for="companySelect">בחר חברה:</label>
+  <select id="companySelect">
+    <option value="">-- בחר --</option>
+  </select>
+
   <h3>בחר תכונות נוספות:</h3>
   <div id="parameterCheckboxes" class="checkbox-container"></div>
 
@@ -165,7 +179,34 @@ async function loadData() {
       categorySelect.appendChild(option);
     });
 
-    allParameters = Object.keys(products[0]).filter(key => !["קטגוריה", "שם המוצר", "תיאור"].includes(key));
+    const companySelect = document.getElementById('companySelect');
+
+        // Build map: company → total ממומן score
+        const companyScores = {};
+        products.forEach(p => {
+        const company = p["חברה"];
+        const score = parseInt(p["ממומן"]) || 0;
+        if (!companyScores[company]) {
+            companyScores[company] = 0;
+        }
+        companyScores[company] += score;
+        });
+
+        // Sort companies by total ממומן descending
+        const sortedCompanies = Object.entries(companyScores)
+        .sort((a, b) => b[1] - a[1])
+        .map(entry => entry[0]);
+
+        // Populate the dropdown
+        sortedCompanies.forEach(comp => {
+        const option = document.createElement('option');
+        option.value = comp;
+        option.textContent = comp;
+        companySelect.appendChild(option);
+    });
+
+
+    allParameters = Object.keys(products[0]).filter(key => !["קטגוריה", "שם המוצר", "תיאור", "חברה", "ממומן"].includes(key));
     document.getElementById('spinner').style.display = "none";
   } catch (err) {
     document.getElementById("results").innerText = "שגיאה בטעינת נתונים: " + err;
@@ -206,6 +247,7 @@ document.getElementById('categorySelect').addEventListener('change', function ()
 
 function filterProducts() {
   const selectedCategory = document.getElementById('categorySelect').value;
+  const selectedCompany = document.getElementById('companySelect').value;
   const resultsDiv = document.getElementById('results');
   resultsDiv.innerHTML = "";
 
@@ -216,10 +258,15 @@ function filterProducts() {
 
   const selectedParams = Array.from(document.querySelectorAll('#parameterCheckboxes input:checked')).map(cb => cb.value);
 
-  const filtered = products.filter(p => {
-    return p["קטגוריה"] === selectedCategory &&
-           selectedParams.every(param => p[param] === "x");
+  let filtered = products.filter(p => {
+    const matchCategory = p["קטגוריה"] === selectedCategory;
+    const matchCompany = !selectedCompany || p["חברה"] === selectedCompany;
+    const matchParams = selectedParams.every(param => p[param] === "x");
+    return matchCategory && matchCompany && matchParams;
   });
+
+  // Sort so that sponsored products (ממומן = 1) come first
+  filtered.sort((a, b) => (parseInt(b["ממומן"] || 0)) - (parseInt(a["ממומן"] || 0)));
 
   if (filtered.length === 0) {
     resultsDiv.textContent = "לא נמצאו תכשירים מתאימים.";
@@ -229,7 +276,8 @@ function filterProducts() {
   filtered.forEach(p => {
     const div = document.createElement('div');
     div.className = "product";
-    div.innerHTML = `<strong>${p["שם המוצר"]}</strong><br>${p["תיאור"]}`;
+    div.innerHTML = `<strong>${p["שם המוצר"]}</strong> <span style="color:#777;">(${p["חברה"]})</span><br>${p["תיאור"]}`;
+
     resultsDiv.appendChild(div);
   });
 }
