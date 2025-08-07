@@ -26,6 +26,9 @@
       font-size: 20px;
     }
 
+    text-align: left;
+    direction: ltr;
+
     h2 {
       text-align: center;
       padding: 30px 20px 10px;
@@ -140,6 +143,12 @@
 
 <h2>מדריך בחירת תכשירים - לה רוש-פוזה</h2>
 <div class="container">
+  <label for="productSearch">חפש תכשיר לפי שם:</label>
+  <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+    <input type="text" id="productSearch" placeholder=" " style="flex: 1; padding: 10px; font-size: 18px; border-radius: 8px; border: 1px solid #ccc;text-align: left; direction: ltr;">
+    <button onclick="searchByProductName()" style="padding: 10px 20px; font-size: 18px; border-radius: 8px; background-color: #1a73e8; color: white; border: none; cursor: pointer;">🔍 חפש</button>
+  </div>
+
   <label for="categorySelect">בחר קטגוריה:</label>
   <select id="categorySelect">
     <option value="">-- בחר --</option>
@@ -278,6 +287,32 @@ function filterProducts() {
     div.className = "product";
     div.innerHTML = `<strong>${p["שם המוצר"]}</strong> <span style="color:#777;">(${p["חברה"]})</span><br>${p["תיאור"]}`;
 
+    resultsDiv.appendChild(div);
+  });
+}
+function searchByProductName() {
+  const query = document.getElementById('productSearch').value.trim().toLowerCase();
+  const resultsDiv = document.getElementById('results');
+  resultsDiv.innerHTML = "";
+
+  if (!query) {
+    resultsDiv.textContent = "אנא הזן שם מוצר לחיפוש.";
+    return;
+  }
+
+  const matched = products.filter(p =>
+    p["שם המוצר"] && p["שם המוצר"].toLowerCase().includes(query)
+  );
+
+  if (matched.length === 0) {
+    resultsDiv.textContent = "לא נמצאו תכשירים עם שם זה.";
+    return;
+  }
+
+  matched.forEach(p => {
+    const div = document.createElement('div');
+    div.className = "product";
+    div.innerHTML = `<strong>${p["שם המוצר"]}</strong> <span style="color:#777;">(${p["חברה"]})</span><br>${p["תיאור"]}`;
     resultsDiv.appendChild(div);
   });
 }
