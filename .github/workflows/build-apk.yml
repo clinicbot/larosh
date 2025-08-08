@@ -29,7 +29,7 @@ jobs:
             "appName": "ClinicBot",
             "webDir": ".",
             "server": {
-              "url": "YOUR_PAGES_URL_HERE",
+              "url": "https://clinicbot.github.io/larosh/",
               "cleartext": false
             }
           }
