@@ -2,8 +2,6 @@ name: Build Android APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
 
 jobs:
   build:
@@ -21,15 +19,17 @@ jobs:
         run: |
           npm init -y
           npm install @capacitor/cli @capacitor/core @capacitor/android
+          mkdir -p www
+          echo "<!doctype html><title>Loading…</title>" > www/index.html
 
       - name: Init Capacitor project (points to your site URL)
         run: |
-          npx cap init "ClinicBot" com.clinicbot.app --web-dir=.
+          npx cap init "ClinicBot" com.clinicbot.app --web-dir=www
           cat > capacitor.config.json << 'JSON'
           {
             "appId": "com.clinicbot.app",
             "appName": "ClinicBot",
-            "webDir": ".",
+            "webDir": "www",
             "server": {
               "url": "https://clinicbot.github.io/larosh/",
               "cleartext": false
@@ -49,7 +49,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # שים לב: מעבירים את התקנת ה-Android SDK רק אחרי שנוצר פרויקט Android
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
