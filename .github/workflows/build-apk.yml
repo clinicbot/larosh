@@ -100,30 +100,58 @@ jobs:
             echo "MY_KEY_PASSWORD=${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}"
           } >> android/gradle.properties
 
-      - name: Configure release signing in Gradle
+      - name: Configure release signing in Gradle (fixed)
         run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/derma_keystore.jks
+          {
+            echo "MY_STORE_FILE=derma_keystore.jks"
+            echo "MY_STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
+            echo "MY_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}"
+            echo "MY_KEY_PASSWORD=${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}"
+          } >> android/gradle.properties
+
           APP_GRADLE=android/app/build.gradle
-          # הוסף signingConfigs אם לא קיים
-          if ! grep -q "signingConfigs {" "$APP_GRADLE"; then
-            awk '{
-              print $0
-              if ($0 ~ /android \{/) {
-                print "    signingConfigs {"
-                print "        release {"
-                print "            storeFile file(MY_STORE_FILE)"
-                print "            storePassword MY_STORE_PASSWORD"
-                print "            keyAlias MY_KEY_ALIAS"
-                print "            keyPassword MY_KEY_PASSWORD"
-                print "        }"
-                print "    }"
-              }
-            }' "$APP_GRADLE" > "$APP_GRADLE.tmp" && mv "$APP_GRADLE.tmp" "$APP_GRADLE"
-          fi
-          # חבר את buildTypes.release לחתימה + אופטימיזציה
-          if ! grep -q "signingConfig signingConfigs.release" "$APP_GRADLE"; then
-            sed -i 's/release {/release {\n            minifyEnabled true\n            shrinkResources true\n            signingConfig signingConfigs.release/' "$APP_GRADLE"
+
+          # הוסף signingConfigs.release אם חסר
+          if ! grep -q "signingConfigs" "$APP_GRADLE"; then
+            sed -i 's/android[[:space:]]*{/android {\n    signingConfigs {\n        release {\n            storeFile file(MY_STORE_FILE)\n            storePassword MY_STORE_PASSWORD\n            keyAlias MY_KEY_ALIAS\n            keyPassword MY_KEY_PASSWORD\n        }\n    }/' "$APP_GRADLE"
           fi
 
+          # ודא של-buildTypes.release יש minify + shrink + signingConfig (בפנים, לא ב-signingConfigs)
+          if grep -q "buildTypes[[:space:]]*{" "$APP_GRADLE"; then
+            # מחליף את בלוק release הראשון בתוך buildTypes
+            awk '
+              BEGIN{inBT=0; inRel=0}
+              /buildTypes[[:space:]]*{/ {inBT=1}
+              inBT && /release[[:space:]]*{/ {inRel=1}
+              inRel && /}/ { 
+                print "            minifyEnabled true"
+                print "            shrinkResources true"
+                print "            signingConfig signingConfigs.release"
+                inRel=0
+              }
+              {print}
+            ' "$APP_GRADLE" > "$APP_GRADLE.tmp" && mv "$APP_GRADLE.tmp" "$APP_GRADLE"
+          else
+            sed -i 's/android[[:space:]]*{/android {\n    buildTypes {\n        release {\n            minifyEnabled true\n            shrinkResources true\n            signingConfig signingConfigs.release\n        }\n    }/' "$APP_GRADLE"
+          fi
+
+      - name: Force SDK 35 in app/build.gradle
+        run: |
+          APP_GRADLE=android/app/build.gradle
+          # compileSdkVersion
+          if grep -q "compileSdkVersion" "$APP_GRADLE"; then
+            sed -i 's/compileSdkVersion[[:space:]]\+[0-9]\+/compileSdkVersion 35/' "$APP_GRADLE"
+          else
+            sed -i 's/android[[:space:]]*{/android {\n    compileSdkVersion 35/' "$APP_GRADLE"
+          fi
+          # targetSdkVersion בתוך defaultConfig
+          if grep -q "targetSdkVersion" "$APP_GRADLE"; then
+            sed -i 's/targetSdkVersion[[:space:]]\+[0-9]\+/targetSdkVersion 35/' "$APP_GRADLE"
+          else
+            sed -i 's/defaultConfig[[:space:]]*{/defaultConfig {\n        targetSdkVersion 35/' "$APP_GRADLE"
+          fi
+      
       - name: Build Release (APK + AAB)
         run: |
           cd android
