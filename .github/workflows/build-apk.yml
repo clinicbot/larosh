@@ -187,22 +187,35 @@ jobs:
           else
             sed -i 's/defaultConfig[[:space:]]*{/defaultConfig {\n        targetSdkVersion 35/' "$APP_GRADLE"
           fi
+      - name: Bump versions (versionCode + versionName)
+        shell: bash
+        env:
+          RUN: ${{ github.run_number }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          p = 'android/app/build.gradle'
+          with open(p, encoding='utf-8') as f:
+              s = f.read()
+      
+          run = os.environ['RUN']
+          vc  = str(int(run))          # versionCode עולה בכל ריצה
+          vn  = f'1.0.{vc}'            # versionName לדוגמה
+      
+          def set_or_add(pattern, replacement, block_start='defaultConfig {'):
+              global s
+              if re.search(pattern, s, flags=re.M):
+                  s = re.sub(pattern, replacement, s, flags=re.M)
+              else:
+                  s = s.replace(block_start, block_start + '\n        ' + replacement, 1)
+          
+          set_or_add(r'^\s*versionCode\s+\d+',      f'versionCode {vc}')
+          set_or_add(r'^\s*versionName\s+"[^"]*"',  f'versionName "{vn}"')
+          
+          with open(p, 'w', encoding='utf-8') as f:
+              f.write(s)
+          PY
 
-            - name: Bump versions (versionCode + versionName)
-              run: |
-                APP_GRADLE=android/app/build.gradle
-                # versionCode = מספר ריצה של GitHub (תמיד עולה)
-                if grep -q "versionCode" "$APP_GRADLE"; then
-                  sed -i 's/versionCode[[:space:]]\+[0-9]\+/versionCode ${{ github.run_number }}/' "$APP_GRADLE"
-                else
-                  sed -i 's/defaultConfig[[:space:]]*{/defaultConfig {\n        versionCode ${{ github.run_number }}/' "$APP_GRADLE"
-                fi
-                # versionName = 1.0.<run>
-                if grep -q "versionName" "$APP_GRADLE"; then
-                  sed -i 's/versionName[[:space:]]\+\"[^\"]*\"/versionName "1.0.${{ github.run_number }}"/' "$APP_GRADLE"
-                else
-                  sed -i 's/defaultConfig[[:space:]]*{/defaultConfig {\n        versionName "1.0.${{ github.run_number }}"/' "$APP_GRADLE"
-                fi
  
       
       - name: Build Release (APK + AAB)
