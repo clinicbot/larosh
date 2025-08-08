@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,7 +23,7 @@ jobs:
           npm install @capacitor/cli @capacitor/core @capacitor/android
 
       - name: Init Capacitor project (points to your site URL)
-        run: https://clinicbot.github.io/larosh/|
+        run: |
           npx cap init "ClinicBot" com.clinicbot.app --web-dir=.
           cat > capacitor.config.json << 'JSON'
           {
@@ -48,6 +49,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      # שים לב: מעבירים את התקנת ה-Android SDK רק אחרי שנוצר פרויקט Android
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
