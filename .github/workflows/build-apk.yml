@@ -92,13 +92,15 @@ jobs:
 
       - name: Decode keystore from secrets
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/derma_keystore.jks
+          # שים את הקיסטור בתוך android/app/
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/derma_keystore.jks
           {
             echo "MY_STORE_FILE=derma_keystore.jks"
             echo "MY_STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
             echo "MY_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}"
             echo "MY_KEY_PASSWORD=${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}"
           } >> android/gradle.properties
+
 
       - name: Configure release signing in Gradle (fixed)
         run: |
