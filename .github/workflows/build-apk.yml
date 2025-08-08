@@ -28,7 +28,7 @@ jobs:
       - name: Install Capacitor and init
         run: |
           npm init -y
-          npm install @capacitor/core @capacitor/cli
+          npm install @capacitor/core @capacitor/cli @capacitor/android
           npx cap init "ClinicBot" com.clinicbot.app --web-dir=.
 
       - name: Add Android platform
@@ -36,6 +36,9 @@ jobs:
 
       - name: Sync web assets
         run: npx cap copy
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
 
       - name: Build APK (debug)
         run: |
