@@ -101,10 +101,14 @@ jobs:
             echo "MY_KEY_PASSWORD=${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}"
           } >> android/gradle.properties
 
+      - name: Verify keystore file exists
+        run: |
+          echo "Checking android/app/derma_keystore.jks…"
+          ls -l android/app/derma_keystore.jks || (echo "❌ Keystore not found in android/app/"; exit 1)
 
       - name: Configure release signing in Gradle (fixed)
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/derma_keystore.jks
+       
           {
             echo "MY_STORE_FILE=derma_keystore.jks"
             echo "MY_STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
