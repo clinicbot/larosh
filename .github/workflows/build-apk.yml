@@ -45,31 +45,29 @@ jobs:
           if [ -f "$STR" ]; then
             sed -i 's#<string name="app_name">.*</string>#<string name="app_name">DermaMatch</string>#' "$STR"
           fi
-     
       - name: Make adaptive app icon from appl.png
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
-          ICON=appl.png   # if your PNG sits in .github/workflows: ICON=.github/workflows/appl.png
+          ICON=appl.png   # if your PNG is in .github/workflows, use: ICON=.github/workflows/appl.png
           test -f "$ICON"
       
           BG_COLOR="#E6F0FF"
           VALDIR=android/app/src/main/res/values
           mkdir -p "$VALDIR"
       
-          # If an ic_launcher_background.xml exists -> edit it.
+          # If ic_launcher_background.xml exists -> edit it, otherwise define in colors.xml
           if [ -f "$VALDIR/ic_launcher_background.xml" ]; then
-            sed -i "s#<color name=\"ic_launcher_background\">.*</color>#<color name=\"ic_launcher_background\">$BG_COLOR</color>#" "$VALDIR/ic_launcher_background.xml"
+            sed -i "s|<color name=\"ic_launcher_background\">.*</color>|<color name=\"ic_launcher_background\">$BG_COLOR</color>|" "$VALDIR/ic_launcher_background.xml"
             # ensure colors.xml does NOT also define it
             if [ -f "$VALDIR/colors.xml" ]; then
               sed -i '/name="ic_launcher_background"/d' "$VALDIR/colors.xml"
             fi
           else
-            # otherwise define/update it in colors.xml
             if [ -f "$VALDIR/colors.xml" ]; then
               if grep -q 'name="ic_launcher_background"' "$VALDIR/colors.xml"; then
-                sed -i "s#<color name=\"ic_launcher_background\">.*</color>#<color name=\"ic_launcher_background\">$BG_COLOR</color>#" "$VALDIR/colors.xml"
+                sed -i "s|<color name=\"ic_launcher_background\">.*</color>|<color name=\"ic_launcher_background\">$BG_COLOR</color>|" "$VALDIR/colors.xml"
               else
-                sed -i "s#</resources>#  <color name=\"ic_launcher_background\">$BG_COLOR</color>\n</resources>#" "$VALDIR/colors.xml"
+                sed -i "s|</resources>|  <color name=\"ic_launcher_background\">$BG_COLOR</color>\n</resources>|" "$VALDIR/colors.xml"
               fi
             else
               echo "<resources><color name=\"ic_launcher_background\">$BG_COLOR</color></resources>" > "$VALDIR/colors.xml"
@@ -89,6 +87,7 @@ jobs:
           convert "$ICON" -resize 324x324 -background none -gravity center -extent 324x324  android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
           convert "$ICON" -resize 432x432 -background none -gravity center -extent 432x432  android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
 
+      
       - name: Bump compile/target SDK to 35
         run: |
           sed -i 's/compileSdkVersion = 34/compileSdkVersion = 35/' android/variables.gradle || true
