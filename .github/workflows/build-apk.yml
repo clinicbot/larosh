@@ -49,26 +49,34 @@ jobs:
       - name: Make adaptive app icon from appl.png
         run: |
           sudo apt-get update && sudo apt-get install -y imagemagick
-          ICON=appl.png            # If your file is in .github/workflows, change to ICON=.github/workflows/appl.png
+          ICON=appl.png   # if your PNG sits in .github/workflows: ICON=.github/workflows/appl.png
           test -f "$ICON"
       
-          # background color (medical blue)
           BG_COLOR="#E6F0FF"
+          VALDIR=android/app/src/main/res/values
+          mkdir -p "$VALDIR"
       
-          # ensure values/colors.xml has background color
-          COLORS=android/app/src/main/res/values/colors.xml
-          mkdir -p "$(dirname "$COLORS")"
-          if [ ! -f "$COLORS" ]; then
-            echo "<resources><color name=\"ic_launcher_background\">$BG_COLOR</color></resources>" > "$COLORS"
+          # If an ic_launcher_background.xml exists -> edit it.
+          if [ -f "$VALDIR/ic_launcher_background.xml" ]; then
+            sed -i "s#<color name=\"ic_launcher_background\">.*</color>#<color name=\"ic_launcher_background\">$BG_COLOR</color>#" "$VALDIR/ic_launcher_background.xml"
+            # ensure colors.xml does NOT also define it
+            if [ -f "$VALDIR/colors.xml" ]; then
+              sed -i '/name="ic_launcher_background"/d' "$VALDIR/colors.xml"
+            fi
           else
-            if grep -q 'name="ic_launcher_background"' "$COLORS"; then
-              sed -i "s#<color name=\"ic_launcher_background\">.*</color>#<color name=\"ic_launcher_background\">$BG_COLOR</color>#" "$COLORS"
+            # otherwise define/update it in colors.xml
+            if [ -f "$VALDIR/colors.xml" ]; then
+              if grep -q 'name="ic_launcher_background"' "$VALDIR/colors.xml"; then
+                sed -i "s#<color name=\"ic_launcher_background\">.*</color>#<color name=\"ic_launcher_background\">$BG_COLOR</color>#" "$VALDIR/colors.xml"
+              else
+                sed -i "s#</resources>#  <color name=\"ic_launcher_background\">$BG_COLOR</color>\n</resources>#" "$VALDIR/colors.xml"
+              fi
             else
-              sed -i "s#</resources>#  <color name=\"ic_launcher_background\">$BG_COLOR</color>\n</resources>#" "$COLORS"
+              echo "<resources><color name=\"ic_launcher_background\">$BG_COLOR</color></resources>" > "$VALDIR/colors.xml"
             fi
           fi
       
-          # foreground images (adaptive icon)
+          # foreground images for adaptive icon
           mkdir -p android/app/src/main/res/mipmap-mdpi \
                    android/app/src/main/res/mipmap-hdpi \
                    android/app/src/main/res/mipmap-xhdpi \
