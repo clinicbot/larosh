@@ -40,6 +40,11 @@ jobs:
       - name: Add Android platform
         run: npx cap add android
 
+      - name: Bump compile/target SDK to 35
+        run: |
+          sed -i 's/compileSdkVersion = 34/compileSdkVersion = 35/' android/variables.gradle || true
+          sed -i 's/targetSdkVersion = 34/targetSdkVersion = 35/' android/variables.gradle || true
+
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
@@ -51,6 +56,10 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+
+      - name: Install Android API 35 packages
+        run: |
+          yes | sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
       - name: Build APK (debug)
         run: |
