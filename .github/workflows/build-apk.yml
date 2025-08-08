@@ -15,37 +15,47 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Install Capacitor CLI
+        run: |
+          npm init -y
+          npm install @capacitor/cli @capacitor/core @capacitor/android
+
+      - name: Init Capacitor project (points to your site URL)
+        run: https://clinicbot.github.io/larosh/|
+          npx cap init "ClinicBot" com.clinicbot.app --web-dir=.
+          cat > capacitor.config.json << 'JSON'
+          {
+            "appId": "com.clinicbot.app",
+            "appName": "ClinicBot",
+            "webDir": ".",
+            "server": {
+              "url": "YOUR_PAGES_URL_HERE",
+              "cleartext": false
+            }
+          }
+          JSON
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
       - name: Set up Java (JDK 17)
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Capacitor and init
-        run: |
-          npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-          npx cap init "ClinicBot" com.clinicbot.app --web-dir=.
-
-      - name: Add Android platform
-        run: npx cap add android
-
-      - name: Sync web assets
-        run: npx cap copy
-
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
-
       - name: Build APK (debug)
         run: |
           cd android
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: ClinicBot-APK
