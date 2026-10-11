@@ -75,7 +75,7 @@ jobs:
               s = f.read()
           s = re.sub(r'(compileSdkVersion\s*=\s*)\d+', r'\g<1>35', s)
           s = re.sub(r'(targetSdkVersion\s*=\s*)\d+', r'\g<1>35', s)
-          s, min_count = re.subn(r'(minSdkVersion\\s*=\\s*)\\d+', r'\\g<1>24', s)
+          s, min_count = re.subn(r'(minSdkVersion\s*=\s*)\d+', r'\g<1>24', s)
           if min_count != 1:
               raise SystemExit('Expected exactly one minSdkVersion in variables.gradle')
           with open(variables, 'w', encoding='utf-8') as f:
