@@ -6,6 +6,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -13,19 +15,17 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
 
-      - name: Install Capacitor CLI
+      - name: Create Capacitor project
+        shell: bash
         run: |
           npm init -y
-          npm install @capacitor/cli @capacitor/core @capacitor/android
+          npm install --save-exact @capacitor/cli@7 @capacitor/core@7 @capacitor/android@7
           mkdir -p www
-          printf '<!doctype html><title>Loading…</title>' > www/index.html
-
-      - name: Init Capacitor project (points to your site URL)
-        run: |
+          printf '<!doctype html><html><head><title>DermaMatch</title></head><body>Loading...</body></html>' > www/index.html
           npx cap init "DermaMatch" com.clinicbot.dermamatch --web-dir=www
-          cat > capacitor.config.json << 'JSON'
+          cat > capacitor.config.json <<'JSON'
           {
             "appId": "com.clinicbot.dermamatch",
             "appName": "DermaMatch",
@@ -36,197 +36,104 @@ jobs:
             }
           }
           JSON
+          npx cap add android
 
-      - name: Add Android platform
-        run: npx cap add android
-      - name: Force app label to DermaMatch
+      - name: Configure Android app icon
+        shell: bash
         run: |
-          STR=android/app/src/main/res/values/strings.xml
-          if [ -f "$STR" ]; then
-            sed -i 's#<string name="app_name">.*</string>#<string name="app_name">DermaMatch</string>#' "$STR"
-          fi
-      - name: Make adaptive app icon from appl.png
+          sudo apt-get update -qq
+          sudo apt-get install -y imagemagick
+          ICON=".github/workflows/appl.png"
+          test -s "$ICON"
+          for spec in "mdpi:108" "hdpi:162" "xhdpi:216" "xxhdpi:324" "xxxhdpi:432"; do
+            density="${spec%%:*}"
+            pixels="${spec##*:}"
+            target="android/app/src/main/res/mipmap-${density}/ic_launcher_foreground.png"
+            mkdir -p "$(dirname "$target")"
+            convert "$ICON" -resize "${pixels}x${pixels}" -background none -gravity center -extent "${pixels}x${pixels}" "$target"
+          done
+
+      - name: Configure Android version and signing
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_ALIAS_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
-          sudo apt-get update && sudo apt-get install -y imagemagick
-          ICON=appl.png   # if your PNG is in .github/workflows, use: ICON=.github/workflows/appl.png
-          test -f "$ICON"
-      
-          BG_COLOR="#E6F0FF"
-          VALDIR=android/app/src/main/res/values
-          mkdir -p "$VALDIR"
-      
-          # If ic_launcher_background.xml exists -> edit it, otherwise define in colors.xml
-          if [ -f "$VALDIR/ic_launcher_background.xml" ]; then
-            sed -i "s|<color name=\"ic_launcher_background\">.*</color>|<color name=\"ic_launcher_background\">$BG_COLOR</color>|" "$VALDIR/ic_launcher_background.xml"
-            # ensure colors.xml does NOT also define it
-            if [ -f "$VALDIR/colors.xml" ]; then
-              sed -i '/name="ic_launcher_background"/d' "$VALDIR/colors.xml"
-            fi
-          else
-            if [ -f "$VALDIR/colors.xml" ]; then
-              if grep -q 'name="ic_launcher_background"' "$VALDIR/colors.xml"; then
-                sed -i "s|<color name=\"ic_launcher_background\">.*</color>|<color name=\"ic_launcher_background\">$BG_COLOR</color>|" "$VALDIR/colors.xml"
-              else
-                sed -i "s|</resources>|  <color name=\"ic_launcher_background\">$BG_COLOR</color>\n</resources>|" "$VALDIR/colors.xml"
-              fi
-            else
-              echo "<resources><color name=\"ic_launcher_background\">$BG_COLOR</color></resources>" > "$VALDIR/colors.xml"
-            fi
-          fi
-      
-          # foreground images for adaptive icon
-          mkdir -p android/app/src/main/res/mipmap-mdpi \
-                   android/app/src/main/res/mipmap-hdpi \
-                   android/app/src/main/res/mipmap-xhdpi \
-                   android/app/src/main/res/mipmap-xxhdpi \
-                   android/app/src/main/res/mipmap-xxxhdpi
-      
-          convert "$ICON" -resize 108x108 -background none -gravity center -extent 108x108  android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
-          convert "$ICON" -resize 162x162 -background none -gravity center -extent 162x162  android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
-          convert "$ICON" -resize 216x216 -background none -gravity center -extent 216x216  android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
-          convert "$ICON" -resize 324x324 -background none -gravity center -extent 324x324  android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
-          convert "$ICON" -resize 432x432 -background none -gravity center -extent 432x432  android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+          set -euo pipefail
+          for var in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_ALIAS_PASSWORD; do
+            if [ -z "${!var}" ]; then echo "Missing required signing secret: $var"; exit 1; fi
+          done
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/derma_keystore.jks
+          test -s android/app/derma_keystore.jks
+          python3 - <<'PY'
+          import os, re
+          variables = 'android/variables.gradle'
+          with open(variables, encoding='utf-8') as f:
+              s = f.read()
+          s = re.sub(r'(compileSdkVersion\s*=\s*)\d+', r'\g<1>35', s)
+          s = re.sub(r'(targetSdkVersion\s*=\s*)\d+', r'\g<1>35', s)
+          with open(variables, 'w', encoding='utf-8') as f:
+              f.write(s)
+          path = 'android/app/build.gradle'
+          with open(path, encoding='utf-8') as f:
+              s = f.read()
+          code = 22 + int(os.environ['RUN_NUMBER'])
+          s, nc = re.subn(r'\bversionCode\s+\d+', f'versionCode {code}', s, count=1)
+          s, nn = re.subn(r'\bversionName\s+["\'][^"\']+["\']', f'versionName "1.0.{code}"', s, count=1)
+          if nc != 1 or nn != 1:
+              raise SystemExit('Missing versionCode or versionName in generated Gradle file')
+          s += """
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file("derma_keystore.jks")
+                      storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                      keyPassword System.getenv("ANDROID_KEY_ALIAS_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
+          """
+          with open(path, 'w', encoding='utf-8') as f:
+              f.write(s)
+          print('Configured versionCode', code)
+          PY
 
-      
-      - name: Bump compile/target SDK to 35
-        run: |
-          sed -i 's/compileSdkVersion = 34/compileSdkVersion = 35/' android/variables.gradle || true
-          sed -i 's/targetSdkVersion = 34/targetSdkVersion = 35/' android/variables.gradle || true
-
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
-
-      - name: Set up Java (JDK 21)
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '21'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android API 35 packages
-        run: |
-          yes | sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
-
-      - name: Build APK (debug)
-        run: |
-          cd android
-          ./gradlew assembleDebug --no-daemon
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ClinicBot-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Decode keystore from secrets
-        run: |
-          # שים את הקיסטור בתוך android/app/
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/derma_keystore.jks
-          {
-            echo "MY_STORE_FILE=derma_keystore.jks"
-            echo "MY_STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
-            echo "MY_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}"
-            echo "MY_KEY_PASSWORD=${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}"
-          } >> android/gradle.properties
-
-      - name: Verify keystore file exists
-        run: |
-          echo "Checking android/app/derma_keystore.jks…"
-          ls -l android/app/derma_keystore.jks || (echo "❌ Keystore not found in android/app/"; exit 1)
-
-      - name: Configure release signing in Gradle (fixed)
-        run: |
-       
-          {
-            echo "MY_STORE_FILE=derma_keystore.jks"
-            echo "MY_STORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
-            echo "MY_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}"
-            echo "MY_KEY_PASSWORD=${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}"
-          } >> android/gradle.properties
-
-          APP_GRADLE=android/app/build.gradle
-
-          # הוסף signingConfigs.release אם חסר
-          if ! grep -q "signingConfigs" "$APP_GRADLE"; then
-            sed -i 's/android[[:space:]]*{/android {\n    signingConfigs {\n        release {\n            storeFile file(MY_STORE_FILE)\n            storePassword MY_STORE_PASSWORD\n            keyAlias MY_KEY_ALIAS\n            keyPassword MY_KEY_PASSWORD\n        }\n    }/' "$APP_GRADLE"
-          fi
-
-          # ודא של-buildTypes.release יש minify + shrink + signingConfig (בפנים, לא ב-signingConfigs)
-          if grep -q "buildTypes[[:space:]]*{" "$APP_GRADLE"; then
-            # מחליף את בלוק release הראשון בתוך buildTypes
-            awk '
-              BEGIN{inBT=0; inRel=0}
-              /buildTypes[[:space:]]*{/ {inBT=1}
-              inBT && /release[[:space:]]*{/ {inRel=1}
-              inRel && /}/ { 
-                print "            minifyEnabled true"
-                print "            shrinkResources true"
-                print "            signingConfig signingConfigs.release"
-                inRel=0
-              }
-              {print}
-            ' "$APP_GRADLE" > "$APP_GRADLE.tmp" && mv "$APP_GRADLE.tmp" "$APP_GRADLE"
-          else
-            sed -i 's/android[[:space:]]*{/android {\n    buildTypes {\n        release {\n            minifyEnabled true\n            shrinkResources true\n            signingConfig signingConfigs.release\n        }\n    }/' "$APP_GRADLE"
-          fi
-
-      - name: Force SDK 35 in app/build.gradle
-        run: |
-          APP_GRADLE=android/app/build.gradle
-          # compileSdkVersion
-          if grep -q "compileSdkVersion" "$APP_GRADLE"; then
-            sed -i 's/compileSdkVersion[[:space:]]\+[0-9]\+/compileSdkVersion 35/' "$APP_GRADLE"
-          else
-            sed -i 's/android[[:space:]]*{/android {\n    compileSdkVersion 35/' "$APP_GRADLE"
-          fi
-          # targetSdkVersion בתוך defaultConfig
-          if grep -q "targetSdkVersion" "$APP_GRADLE"; then
-            sed -i 's/targetSdkVersion[[:space:]]\+[0-9]\+/targetSdkVersion 35/' "$APP_GRADLE"
-          else
-            sed -i 's/defaultConfig[[:space:]]*{/defaultConfig {\n        targetSdkVersion 35/' "$APP_GRADLE"
-          fi
-      - name: Bump versions (versionCode + versionName)
+      - name: Build signed release APK and AAB
         shell: bash
         env:
-          RUN: ${{ github.run_number }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_ALIAS_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
         run: |
-          python3 - <<'PY'
-          import os, re
-          p = 'android/app/build.gradle'
-          with open(p, encoding='utf-8') as f:
-              s = f.read()
-      
-          run = os.environ['RUN']
-          vc  = str(int(run))          # versionCode עולה בכל ריצה
-          vn  = f'1.0.{vc}'            # versionName לדוגמה
-      
-          def set_or_add(pattern, replacement, block_start='defaultConfig {'):
-              global s
-              if re.search(pattern, s, flags=re.M):
-                  s = re.sub(pattern, replacement, s, flags=re.M)
-              else:
-                  s = s.replace(block_start, block_start + '\n        ' + replacement, 1)
-          
-          set_or_add(r'^\s*versionCode\s+\d+',      f'versionCode {vc}')
-          set_or_add(r'^\s*versionName\s+"[^"]*"',  f'versionName "{vn}"')
-          
-          with open(p, 'w', encoding='utf-8') as f:
-              f.write(s)
-          PY
-
- 
-      
-      - name: Build Release (APK + AAB)
-        run: |
+          chmod +x android/gradlew
           cd android
           ./gradlew assembleRelease bundleRelease --no-daemon
+          test -s app/build/outputs/bundle/release/app-release.aab
 
-      - name: Upload Release artifacts
+      - name: Upload release files
         uses: actions/upload-artifact@v4
         with:
           name: DermaMatch-release
           path: |
             android/app/build/outputs/apk/release/app-release.apk
             android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
